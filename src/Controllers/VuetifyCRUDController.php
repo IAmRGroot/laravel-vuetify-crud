@@ -3,6 +3,7 @@
 namespace IAmRGroot\VuetifyCRUD\Controllers;
 
 use Exception;
+use IAmRGroot\VuetifyCRUD\Fields\Field;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,11 @@ use Illuminate\Support\Facades\Route;
 
 abstract class VuetifyCRUDController extends Controller
 {
-    abstract protected static function getPrefix(): string;
+    abstract public static function getName(): string;
+
+    abstract public static function getTranslation(): string;
+
+    abstract public static function getDefault(): string;
 
     abstract protected static function getModel(): string;
 
@@ -27,7 +32,7 @@ abstract class VuetifyCRUDController extends Controller
 
     public function __construct()
     {
-        if ('' === static::getPrefix()) {
+        if ('' === static::getName()) {
             throw new Exception('Prefix not set correctly');
         }
 
@@ -41,18 +46,18 @@ abstract class VuetifyCRUDController extends Controller
 
     public static function routes(?string $permission = null): void
     {
-        Route::get(static::getPrefix(), [static::class, 'get'])->middleware(is_null($permission) ? null : "{$permission}.view");
-        Route::put(static::getPrefix(), [static::class, 'put'])->middleware(is_null($permission) ? null : "{$permission}.create");
-        Route::patch(static::getPrefix() . '/{model}', [static::class, 'patch'])->middleware(is_null($permission) ? null : "{$permission}.edit");
-        Route::delete(static::getPrefix() . '/{model}', [static::class, 'delete'])->middleware(is_null($permission) ? null : "{$permission}.delete");
+        Route::get(static::getName(), [static::class, 'get'])->middleware(is_null($permission) ? null : "{$permission}.view");
+        Route::put(static::getName(), [static::class, 'put'])->middleware(is_null($permission) ? null : "{$permission}.create");
+        Route::patch(static::getName() . '/{model}', [static::class, 'patch'])->middleware(is_null($permission) ? null : "{$permission}.edit");
+        Route::delete(static::getName() . '/{model}', [static::class, 'delete'])->middleware(is_null($permission) ? null : "{$permission}.delete");
     }
 
     /**
-     * @return Collection<Model>
+     * @return Collection<Model|Builder>
      */
     public function get(): Collection
     {
-        return $this->instance->all();
+        return $this->instance->query()->get();
     }
 
     public function put(Request $request): Model
@@ -80,5 +85,38 @@ abstract class VuetifyCRUDController extends Controller
         $model->save();
 
         return $model;
+    }
+
+    /**
+     * @return Field[]
+     */
+    public function fields(): array
+    {
+        $fields = array_keys(
+            $this->instance->getConnection()->getDoctrineSchemaManager()->listTableColumns($this->instance->getTable())
+        );
+
+        return array_map(
+            fn (string $attribute) => new Field($attribute),
+            $fields
+        );
+    }
+
+    public function getHeaders(): string
+    {
+        $headers =implode(
+            ', ',
+            array_map(
+                fn (Field $field) => $field->toHeader(),
+                $this->fields()
+            )
+        );
+
+        return "[ {$headers} ]";
+    }
+
+    public function renderForm(): string
+    {
+        return 'TODO';
     }
 }
