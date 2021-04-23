@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  php:
+    build: .
+    user: ${UID:-1000}
+    environment:
+        COMPOSER_HOME: ~/.composer
+        COMPOSER_CACHE_DIR: ~/.composer/cache
+    volumes:
+      - ./:/var/www
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
